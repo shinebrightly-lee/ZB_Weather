@@ -46,19 +46,14 @@ public class DiaryService {
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public void createDiary(LocalDate date, String text) {
-        // open weather map 에서 날씨 데이터 가져오기
-        String weatherData = getWeatherString();
-
-        // 받아온 날씩 json 파싱하기
-        Map<String, Object> parseWeather = parseWeather(weatherData);
+        // 날씨 데이터 가져오기
+        // ( API 에서 가져오기 or DB 에서 가져오기 )
+        DateWeather dateWeather = getDateWeather(date);
 
         // 파싱된 데이터 + 일기 값 db 에 넣기
         Diary nowDiary = new Diary();
-        nowDiary.setWeather(parseWeather.get("main").toString());
-        nowDiary.setIcon(parseWeather.get("icon").toString());
-        nowDiary.setTemperature((Double) parseWeather.get("temp"));
+        nowDiary.setDateWeather(dateWeather);
         nowDiary.setText(text);
-        nowDiary.setDate(date);
         diaryRepository.save(nowDiary);
 
     }
@@ -74,6 +69,17 @@ public class DiaryService {
         return dateWeather;
     }
 
+    private DateWeather getDateWeather(LocalDate date){
+        List<DateWeather> dateWeatherListFormDB = dateWeatherRepository.findAllByDate(date);
+        if (dateWeatherListFormDB.size() == 0){
+            // 새로 api 에서 날씨 정보를 가져와야 한다.
+            // 정책상...현재 날씨를 가져오도록 하거나 날씨없이 일기를 쓰도록..
+            return getWeatherFormApi();
+        }else {
+            return dateWeatherListFormDB.get(0);
+        }
+
+    }
 
     @Transactional(readOnly = true)
     public List<Diary> readDiary(LocalDate date) {
